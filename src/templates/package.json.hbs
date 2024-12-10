@@ -1,0 +1,59 @@
+{
+    "name": "{{projectName}}",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "{{projectName}}",
+    "main": "app.js",
+    "engines": {
+        "node": ">=16.17.0"
+    },
+    "scripts": {
+        "build": "tsc --build && npm run build-all && npm run clean-map-js",
+        "clean": "tsc --build --clean",
+        "build-all": "cross-env TS_NODE_PROJECT=tsconfig.buildscripts.json node --loader ts-node/esm ./buildAll.ts && cross-env TS_NODE_PROJECT=tsconfig.buildscripts.json node --loader ts-node/esm ./popupGen.ts",
+        "clean-map-js": "rimraf --glob **/js/**/*.js.map",
+        "server": "http-server -p 8080 -c-1",
+        "watch": "nodemon --watch \"./ts/**/*.ts\" --ext ts --exec \"npm run build\" --legacy-watch",
+        "dev": "concurrently \"npm run watch\" \"npm run server\""
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.9.1",
+        "@rollup/plugin-commonjs": "^26.0.2",
+        "@rollup/plugin-node-resolve": "^15.2.4",
+        "@rollup/plugin-typescript": "^11.1.6",
+        "@types/eslint__js": "^8.42.3",
+        "@types/node": "^14.18.63",
+        "@types/xrm": "^9.0.81",
+        "@typescript-eslint/eslint-plugin": "^5.33.0",
+        "@typescript-eslint/parser": "^5.33.0",
+        "bakutils-types": "^2.2.0",
+        "chalk": "^5.3.0",
+        "concurrently": "^9.0.1",
+        "cross-env": "^7.0.3",
+        "eslint": "^8.57.0",
+        "http-server": "^14.1.1",
+        "nodemon": "^3.1.7",
+        "rimraf": "^6.0.1",
+        "rollup": "^4.21.2",
+        "rollup-plugin-typescript2": "^0.36.0",
+        "ts-node": "^10.9.2",
+        "tslib": "^2.7.0",
+        "typescript": "^5.5.4",
+        "typescript-eslint": "^8.3.0"
+    },
+    "dependencies": {
+        "bakutils-catcher": "^5.0.0",
+        "dayjs": "^1.11.13",
+        "ts-pattern": "^5.3.1"
+    },
+    "eslintConfig": {
+        "parser": "@typescript-eslint/parser",
+        "parserOptions": {
+            "ecmaVersion": "latest",
+            "sourceType": "module"
+        },
+        "plugins": [
+            "@typescript-eslint"
+        ]
+    }
+}

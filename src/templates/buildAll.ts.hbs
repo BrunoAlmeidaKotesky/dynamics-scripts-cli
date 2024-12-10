@@ -1,0 +1,123 @@
+import { exec } from 'child_process';
+import { readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
+import path, { join, extname, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import chalk from 'chalk';
+
+type IOFile = { input: string; output: string; name: string };
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const files = JSON.parse(readFileSync(join(__dirname, 'files-with-imports.json'), 'utf8')) as IOFile[];
+
+function validateFileSchema(data: any): data is IOFile {
+  return (
+    typeof data === 'object' &&
+    typeof data.input === 'string' &&
+    typeof data.output === 'string' &&
+    typeof data.name === 'string'
+  );
+}
+
+function buildModule({ input, output, name }: IOFile) {
+  return new Promise<void>((resolve, reject) => {
+    const command = `rollup -c rollup.config.js --input "${input}" --output "${output}" --name "${name}"`;
+    console.log(chalk.blueBright(`\n🚀 Building ${chalk.bold(name)}...`));
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(chalk.red(`❌ Error building ${name}: ${error.message}`));
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        console.error(chalk.yellow(`⚠️ Build stderr for ${name}:\n${stderr}`));
+      }
+      console.log(chalk.green(`✅ Build completed for ${chalk.bold(name)}.`));
+      resolve();
+    });
+  });
+}
+
+async function buildAll() {
+  console.log(chalk.magentaBright('\n📦 Starting build process...'));
+  for (let index = 0; index < files.length; index++) {
+    const build = files[index];
+    try {
+      if (!validateFileSchema(build)) {
+        console.error(
+          chalk.red(
+            `❌ Invalid file schema at index ${index}.\nContent: ${JSON.stringify(
+              build,
+              null,
+              2
+            )}\nEnsure it has the properties 'input', 'output', and 'name'.`
+          )
+        );
+        process.exit(1);
+      }
+      await buildModule(build);
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to build ${build.name}`));
+      process.exit(1);
+    }
+  }
+  console.log(chalk.magentaBright('\n🎉 All builds completed successfully.'));
+}
+
+function removeExportStatements(filePath: string) {
+  let content = readFileSync(filePath, 'utf8');
+  const originalContent = content;
+  content = content.replace(/^export\s+.+?;?$/gm, '');
+
+  if (content !== originalContent) {
+    writeFileSync(filePath, content, 'utf8');
+    console.log(chalk.cyan(`🧹 Removed export statements from ${filePath}`));
+  }
+}
+
+function removeLeadingBlankLines(filePath: string) {
+  let content = readFileSync(filePath, 'utf8');
+  const originalContent = content;
+  content = content.replace(/^\s+/, '');
+
+  if (content !== originalContent) {
+    writeFileSync(filePath, content, 'utf8');
+    console.log(chalk.cyan(`🧹 Removed leading blank lines from ${filePath}`));
+  }
+}
+
+function removeMicrosoftCopyrightComment(filePath: string) {
+  let content = readFileSync(filePath, 'utf8');
+  const originalContent = content;
+  const copyrightRegex = /\/\*{77}[\s\S]*?\*{77} \*\//gm;
+  content = content.replace('/* global Reflect, Promise, SuppressedError, Symbol, Iterator */', '');
+  content = content.replace(copyrightRegex, '');
+  content = content.replace(/^\s+/, '');
+
+  if (content !== originalContent) {
+    writeFileSync(filePath, content, 'utf8');
+    console.log(chalk.cyan(`🧹 Removed Microsoft copyright comment from ${filePath}`));
+  }
+}
+
+function cleanGeneratedFiles(dir: string) {
+  const files = readdirSync(dir);
+
+  for (const file of files) {
+    const filepath = join(dir, file);
+    const stat = statSync(filepath);
+
+    if (stat.isDirectory()) {
+      cleanGeneratedFiles(filepath);
+    } else if (extname(file) === '.js') {
+      removeExportStatements(filepath);
+      removeLeadingBlankLines(filepath);
+      removeMicrosoftCopyrightComment(filepath);
+    }
+  }
+}
+
+const outputDir = path.resolve(__dirname, './js');
+buildAll().then(() => {
+  cleanGeneratedFiles(outputDir);
+  console.log(chalk.magentaBright('\n🎉 All builds and cleanups completed successfully.'));
+});

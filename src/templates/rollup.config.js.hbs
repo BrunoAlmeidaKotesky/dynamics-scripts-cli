@@ -1,0 +1,37 @@
+import typescript from "rollup-plugin-typescript2";
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+
+const args = process.argv.slice(2);
+/**@param {string} flag */
+function getArgValue(flag) {
+    const index = args.indexOf(flag);
+    if (index !== -1 && index + 1 < args.length) {
+        return args[index + 1];
+    }
+    return null;
+}
+
+/** @type {import('rollup').RollupOptions} */
+const build = {
+    input: getArgValue('--input'),
+    cache: false,
+    logLevel: 'silent', 
+    output: {
+        file:  getArgValue('--output'),
+        name: getArgValue('--name'),
+        sourcemap: false,
+        minifyInternalExports: false
+    },
+    plugins: [
+        resolve(),
+        commonjs(),
+        typescript({
+            tsconfig: "./tsconfig.json",
+            include: ["./ts/_index_*.ts", "./ts/**/*.ts"],
+            useTsconfigDeclarationDir: true
+        })
+    ]
+}
+
+export default build;

@@ -1,0 +1,37 @@
+{
+  "name": "dynamics-scripts-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "dynamics-scripts-cli": "./bin/run.js"
+  },
+  "scripts": {
+    "base-build": "tsc",
+    "build-plop-file": "tsc src/plop-setup.ts --outDir dist --module commonjs --esModuleInterop && ren dist\\plop-setup.js plop-setup.cjs",
+    "build": "pnpm base-build && pnpm build-plop-file"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^12.2.0",
+    "node-plop": "^0.32.0",
+    "plop": "^4.0.1"
+  },
+  "devDependencies": {
+    "@oclif/core": "^4.0.36",
+    "@types/fs-extra": "^11.0.4",
+    "@types/handlebars": "^4.1.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "oclif": {
+    "bin": "dynamics-scripts-cli",
+    "commands": "./dist/commands"
+  }
+}
