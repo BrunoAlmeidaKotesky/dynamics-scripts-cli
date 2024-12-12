@@ -9,7 +9,8 @@
   },
   "scripts": {
     "base-build": "tsc",
-    "build-plop-file": "tsc src/plop-setup.ts --outDir dist --module commonjs --esModuleInterop && ren dist\\plop-setup.js plop-setup.cjs",
+    "build-plop-file": "tsc src/plop-setup.ts --outDir dist --module commonjs --esModuleInterop && pnpm remove-plop-file && ren dist\\plop-setup.js plop-setup.cjs",
+    "remove-plop-file": "del dist\\plop-setup.cjs",
     "build": "pnpm base-build && pnpm build-plop-file"
   },
   "keywords": [],

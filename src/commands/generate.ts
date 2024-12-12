@@ -1,4 +1,3 @@
-// src/commands/generate.ts
 import { Command, Flags } from '@oclif/core';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
@@ -6,87 +5,75 @@ import path, { dirname } from 'path';
 import fs from 'fs-extra';
 import nodePlop from 'node-plop';
 import { fileURLToPath } from 'url';
+import { getBasePrompts } from '../prompts/generate_prompts.js';
+import { spawnSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default class Generate extends Command {
-  static description = 'Gera os arquivos e diretórios necessários para um projeto Dynamics 365';
+	static description = 'Generate an easy to use project structure for Dynamics 365 scripts.';
 
-  static examples = [
-    `$ dynamics-scripts-cli generate`,
-  ];
+	static examples = [
+		`$ dynamics-scripts-cli generate`,
+	];
 
-  static flags = {
-    help: Flags.help({ char: 'h' }),
-  };
+	static flags = {
+		help: Flags.help({ char: 'h' }),
+	};
 
-  async run() {
-    try {
-      this.log(chalk.blue('Iniciando geração do projeto...'));
+	async run() {
+		try {
+			const baseAnswers = await inquirer.prompt(getBasePrompts());
+			let targetDir = process.cwd();
+			if (baseAnswers.useSubfolder && baseAnswers.subfolderName) {
+				targetDir = path.join(targetDir, baseAnswers.subfolderName);
+			}
 
-      // Prompt para determinar se deve usar uma subpasta
-      const { useSubfolder } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'useSubfolder',
-          message: 'Deseja criar em uma subpasta?',
-          default: false,
-        },
-      ]);
+			await fs.ensureDir(targetDir);
 
-      let targetDir = process.cwd();
+			const { projectName, includeModels, wantSamples } = baseAnswers;
+			const generator = await this.initializePlop('project');
+			if (!generator)
+				throw new Error("Generator 'project' not found.");
 
-      if (useSubfolder) {
-        const { subfolderName } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'subfolderName',
-            message: 'Nome da subpasta:',
-            validate: (input: string) => input ? true : 'Nome da subpasta é obrigatório.',
-          },
-        ]);
-        targetDir = path.join(targetDir, subfolderName);
-      }
+			await generator.runActions({ targetDir, projectName, includeModels, wantSamples }, ({
+				onFailure: ({ path, error }) => this.error(chalk.red(`❌ Failed to generate file ${path}: ${error}`)),
+				onSuccess: ({ path }) => this.log(chalk.blue(`✔️ File generated at ${path}`)),
+				onComment: (msg) => this.log(chalk.blue(msg))
+			}));
 
-      // Garantir que o diretório de destino existe
-      await fs.ensureDir(targetDir);
+			this.log(chalk.green(`✅ Project successfully generated at ${targetDir}`));
 
-      // Prompt para obter o nome do projeto e se inclui models
-      const { projectName, includeModels } = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'projectName',
-          message: 'Nome do projeto:',
-          validate: (input: string) => input ? true : 'Nome do projeto é obrigatório.',
-        },
-        {
-          type: 'confirm',
-          name: 'includeModels',
-          message: 'Deseja incluir a pasta models com arquivos .d.ts?',
-          default: false,
-        },
-      ]);
+			const { packageManager } = await inquirer.prompt<{ packageManager: 'npm' | 'yarn' | 'pnpm' }>([
+				{
+					type: 'list',
+					name: 'packageManager',
+					message: 'Which package manager would you like to use?',
+					choices: [
+						{ name: 'npm', value: 'npm' },
+						{ name: 'yarn', value: 'yarn' },
+						{ name: 'pnpm', value: 'pnpm' },
+						{ name: 'Skip installation', value: 'skip' }
+					],
+					default: 'npm'
+				}
+			]);
+			this.log(chalk.blue(`⌛ Running ${packageManager} install...`));
+			const result = spawnSync(packageManager, ['install'], { cwd: targetDir, stdio: 'inherit', shell: true });
+			if (result.error)
+				this.error(chalk.red(`❌ Failed to run ${packageManager} install: ${result.error.message}`));
+			else
+				this.log(chalk.green('✅ Dependencies installed successfully!'));
+		} catch (error: any) {
+			this.error(`❌ Error generating project: ${error.message}`);
+		}
+	}
 
-      this.log(chalk.green('Dados coletados:', { targetDir, projectName, includeModels }));
-
-      // Inicializar node-plop com o plop-setup.js
-      const projectRoot = path.join(__dirname, '..', '..');
-      const plopFilePath = path.join(projectRoot, 'plopfile.cjs');
-      const plop = await nodePlop(plopFilePath);
-      // Executar o gerador 'project'
-      const generator = plop.getGenerator('project');
-      if (!generator) {
-        throw new Error('Gerador de projeto não encontrado.');
-      }
-
-      // Executar as ações do gerador com os dados coletados
-      await generator.runActions({ targetDir, projectName, includeModels });
-
-      // Mensagem de sucesso
-      this.log(chalk.green(`Projeto gerado com sucesso em ${targetDir}`));
-    } catch (error: any) {
-      this.error(`Erro ao gerar o projeto: ${error.message}`);
-    }
-  }
+	private async initializePlop(generatorName: string) {
+		const projectRoot = path.join(__dirname, '..', '..');
+		const plopFilePath = path.join(projectRoot, 'plopfile.cjs');
+		const plop = await nodePlop(plopFilePath);
+		return plop.getGenerator(generatorName);
+	}
 }

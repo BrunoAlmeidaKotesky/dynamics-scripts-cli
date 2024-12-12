@@ -4,21 +4,41 @@ import path, { join, extname, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 
-type IOFile = { input: string; output: string; name: string };
+type IOFile = { imports: FileSchema[], schema: string };
+type FileSchema = { input: string; output: string; name: string };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const files = JSON.parse(readFileSync(join(__dirname, 'files-with-imports.json'), 'utf8')) as IOFile[];
 
-function validateFileSchema(data: any): data is IOFile {
-  return (
-    typeof data === 'object' &&
-    typeof data.input === 'string' &&
-    typeof data.output === 'string' &&
-    typeof data.name === 'string'
-  );
+const data = JSON.parse(readFileSync(join(__dirname, 'files-with-imports.json'), 'utf8')) as IOFile;
+
+if (!data || !Array.isArray(data.imports)) {
+  console.error(chalk.red('❌ Invalid "files-with-imports.json": "imports" property must be an array.'));
+  process.exit(1);
 }
 
-function buildModule({ input, output, name }: IOFile) {
+const files = data.imports;
+function validateFileSchema(file: FileSchema, index: number): file is FileSchema {
+  const isValid = (
+    typeof file === 'object' &&
+    typeof file.input === 'string' &&
+    typeof file.output === 'string' &&
+    typeof file.name === 'string'
+  );
+  if (!isValid) {
+    console.error(
+      chalk.red(
+        `❌ Invalid file schema at index ${index}.\nContent: ${JSON.stringify(
+          file,
+          null,
+          2
+        )}\nEnsure it has 'input', 'output', and 'name' as strings.`
+      )
+    );
+  }
+  return isValid;
+}
+
+function buildModule({ input, output, name }: FileSchema) {
   return new Promise<void>((resolve, reject) => {
     const command = `rollup -c rollup.config.js --input "${input}" --output "${output}" --name "${name}"`;
     console.log(chalk.blueBright(`\n🚀 Building ${chalk.bold(name)}...`));
@@ -40,23 +60,14 @@ function buildModule({ input, output, name }: IOFile) {
 async function buildAll() {
   console.log(chalk.magentaBright('\n📦 Starting build process...'));
   for (let index = 0; index < files.length; index++) {
-    const build = files[index];
+    const file = files[index];
+    if (!validateFileSchema(file, index)) {
+      process.exit(1);
+    }
     try {
-      if (!validateFileSchema(build)) {
-        console.error(
-          chalk.red(
-            `❌ Invalid file schema at index ${index}.\nContent: ${JSON.stringify(
-              build,
-              null,
-              2
-            )}\nEnsure it has the properties 'input', 'output', and 'name'.`
-          )
-        );
-        process.exit(1);
-      }
-      await buildModule(build);
+      await buildModule(file);
     } catch (error) {
-      console.error(chalk.red(`❌ Failed to build ${build.name}`));
+      console.error(chalk.red(`❌ Failed to build ${file.name}`));
       process.exit(1);
     }
   }
@@ -95,7 +106,7 @@ function removeMicrosoftCopyrightComment(filePath: string) {
 
   if (content !== originalContent) {
     writeFileSync(filePath, content, 'utf8');
-    console.log(chalk.cyan(`🧹 Removed Microsoft copyright comment from ${filePath}`));
+    console.log(chalk.cyan(`🧹 Removed copyright comment from ${filePath}`));
   }
 }
 

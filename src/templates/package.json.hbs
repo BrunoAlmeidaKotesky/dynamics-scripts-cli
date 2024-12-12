@@ -10,7 +10,7 @@
     "scripts": {
         "build": "tsc --build && npm run build-all && npm run clean-map-js",
         "clean": "tsc --build --clean",
-        "build-all": "cross-env TS_NODE_PROJECT=tsconfig.buildscripts.json node --loader ts-node/esm ./buildAll.ts && cross-env TS_NODE_PROJECT=tsconfig.buildscripts.json node --loader ts-node/esm ./popupGen.ts",
+        "build-all": "cross-env TS_NODE_PROJECT=tsconfig.buildscripts.json node --loader ts-node/esm ./buildAll.ts",
         "clean-map-js": "rimraf --glob **/js/**/*.js.map",
         "server": "http-server -p 8080 -c-1",
         "watch": "nodemon --watch \"./ts/**/*.ts\" --ext ts --exec \"npm run build\" --legacy-watch",

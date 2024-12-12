@@ -1,0 +1,18 @@
+
+namespace clientprefix {
+    export class FormContext {
+        constructor(private context: Xrm.FormContext, private id: string) {
+            this.id = id?.replace("{", "").replace("}", "").toLowerCase();
+        }
+
+        public static onLoad(context: Xrm.FormContext, id: string) {
+            const formContext = new FormContext(context, id);
+            formContext.getRecord();
+        }
+
+        private async getRecord() {
+            const record = await Xrm.WebApi.retrieveRecord("entity", this.id, "?$select=field1,field2");
+            return record;
+        }
+    }
+}

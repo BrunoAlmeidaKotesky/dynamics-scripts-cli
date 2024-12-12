@@ -1,0 +1,24 @@
+import { maybeGetSomeValue } from '../samples/helpers/Sample.js';
+import { Option, Result, Ok, Err, Some, None, DefaultCatcher } from 'bakutils-catcher';
+
+namespace clientprefix {
+    export class FormOperation {
+
+        public static async onLoad(_executionContext: Xrm.FormContext): Promise<void> {
+            const formOperation = new FormOperation();
+            const id = maybeGetSomeValue().unwrapOr("00000000-0000-0000-0000-000000000000");
+            const result = await formOperation.findRecords(id);
+            if (result.isOk()) {
+                console.log(result.unwrap());
+            } else {
+                console.error(result.error);
+            }
+        }
+
+        @DefaultCatcher((err) => Err(err.message))
+        public async findRecords(id: string): Promise<Result<any[], string>> {
+            const result = await Xrm.WebApi.retrieveMultipleRecords("account", "?$select=name");
+            return Ok(result.entities);
+        }
+    }
+}
