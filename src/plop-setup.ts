@@ -60,7 +60,6 @@ export default function (plop: NodePlopAPI) {
 
                 sampleFiles.forEach(file => {
                     const sampleTemplateFullPath = path.join(samplesTemplatePath, file.template);
-                    console.log(`[actions][samples] Adicionando sample: ${file.destination}, template: ${sampleTemplateFullPath}`);
                     actions.push({
                         type: 'add',
                         path: file.destination,

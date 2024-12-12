@@ -57,7 +57,6 @@ function default_1(plop) {
                 ];
                 sampleFiles.forEach(function (file) {
                     var sampleTemplateFullPath = path_1.default.join(samplesTemplatePath_1, file.template);
-                    console.log("[actions][samples] Adicionando sample: ".concat(file.destination, ", template: ").concat(sampleTemplateFullPath));
                     actions.push({
                         type: 'add',
                         path: file.destination,
